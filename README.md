@@ -1,55 +1,112 @@
 # Inovonics EchoStream Processor
 
-`InovonicsEchostreamProcessor` is the reusable transport and protocol layer for
-Inovonics EchoStream integrations. It owns socket connectivity, frame
-reassembly, checksum validation, and normalized event emission so new apps can
-consume EchoStream traffic without inheriting MQTT or Home Assistant concerns.
+`InovonicsEchostreamProcessor` is the reusable EchoStream protocol package for
+new applications. The core is transport-free so it can run on standard Python
+and MicroPython, while runtime-specific adapters live in separate modules.
 
-## Features
+## Architecture
 
-- TCP client with exponential reconnect backoff
-- Frame synchronization and checksum validation
-- Normalized events for coordinator, security, repeater reset, and network
-  status messages
-- Thread-safe event handler registration
-- Small dependency surface suitable for reuse in multiple applications
+- Core:
+  - frame synchronization
+  - checksum validation
+  - EchoStream message parsing
+  - device type mapping
+  - normalized event emission
+  - coordinator metadata state and suggested outbound commands
+- Flat transport adapters in `transports/`:
+  - `cpython_socket.py`
+  - `cpython_uart.py`
+  - `micropython_uart.py`
+  - `micropython_socket.py`
 
-## Install
+The core never imports `socket`, `threading`, `queue`, `serial`, or `machine`.
 
-```bash
-pip install .
-```
+## Runtime Detection
 
-## Quick Start
+The package exposes small runtime helpers:
+
+- `detect_runtime()`
+- `is_cpython()`
+- `is_micropython()`
+
+Transport exports are conditional. Standard Python can import the CPython
+adapters, while MicroPython can import the MicroPython adapters without dragging
+in the wrong runtime dependencies.
+
+## Core Example
 
 ```python
-from inovonics_echostream_processor import EchoStreamProcessor, EchoStreamProcessorConfig
+from inovonics_echostream_processor import EchoStreamProcessorCore
 
 
-def handle_event(event):
+core = EchoStreamProcessorCore()
+batch = core.feed(b"...binary bytes...")
+for event in batch.events:
     print(event.event_type, event.raw_hex)
-
-
-processor = EchoStreamProcessor(
-    EchoStreamProcessorConfig(host="192.168.1.60", port=10001),
-)
-processor.add_event_handler(handle_event)
-processor.start()
+for command in batch.outbound_commands:
+    print("send command", command.hex())
 ```
 
-## Event Model
+## CPython Socket Example
 
-The library emits dataclass-based events such as:
+```python
+from inovonics_echostream_processor.transports.cpython_socket import (
+    SocketProcessorConfig,
+    SocketProcessorService,
+)
 
-- `CoordinatorStatusEvent`
-- `CoordinatorSerialNumberEvent`
-- `CoordinatorNetworkIdEvent`
-- `SecurityMessageEvent`
-- `RepeaterResetEvent`
-- `NetworkStatusEvent`
-- `AckEvent`
-- `NakEvent`
-- `UnknownMessageEvent`
 
-Each event carries the raw binary message alongside normalized fields for use by
-application code.
+service = SocketProcessorService(
+    SocketProcessorConfig(host="192.168.1.60", port=10001),
+)
+service.add_event_handler(lambda event: print(event.event_type))
+service.start()
+```
+
+## CPython UART Example
+
+```python
+from inovonics_echostream_processor.transports.cpython_uart import (
+    CpythonUartProcessorConfig,
+    CpythonUartProcessorService,
+)
+
+
+service = CpythonUartProcessorService(
+    CpythonUartProcessorConfig(port="COM5", baudrate=9600),
+)
+service.add_event_handler(lambda event: print(event.event_type))
+service.start()
+```
+
+## MicroPython UART Example
+
+```python
+from inovonics_echostream_processor.transports.micropython_uart import (
+    MicroPythonUartProcessor,
+    MicroPythonUartProcessorConfig,
+)
+
+
+processor = MicroPythonUartProcessor(
+    MicroPythonUartProcessorConfig(uart_id=0, baudrate=9600),
+)
+while True:
+    processor.poll_once()
+```
+
+## MicroPython Socket Example
+
+```python
+from inovonics_echostream_processor.transports.micropython_socket import (
+    MicroPythonSocketProcessor,
+    MicroPythonSocketProcessorConfig,
+)
+
+
+processor = MicroPythonSocketProcessor(
+    MicroPythonSocketProcessorConfig(host="192.168.1.60", port=10001),
+)
+while True:
+    processor.poll_once()
+```

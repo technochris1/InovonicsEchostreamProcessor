@@ -1,112 +1,52 @@
-from __future__ import annotations
+class ProcessorEvent(object):
+    event_type = "processor_event"
 
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Callable, ClassVar
-
-
-def utc_now() -> datetime:
-    return datetime.now(timezone.utc)
-
-
-@dataclass(slots=True)
-class ProcessorEvent:
-    raw_message: bytes
-    occurred_at: datetime = field(default_factory=utc_now, kw_only=True)
-
-    event_type: ClassVar[str] = "processor_event"
+    def __init__(self, raw_message, **fields):
+        self.raw_message = raw_message
+        for key, value in fields.items():
+            setattr(self, key, value)
 
     @property
-    def raw_hex(self) -> str:
+    def raw_hex(self):
         return self.raw_message.hex().upper()
 
+    def to_dict(self):
+        data = {"event_type": self.event_type, "raw_message": self.raw_message, "raw_hex": self.raw_hex}
+        data.update(self.__dict__)
+        return data
 
-@dataclass(slots=True)
+
 class AckEvent(ProcessorEvent):
-    event_type: ClassVar[str] = "ack"
+    event_type = "ack"
 
 
-@dataclass(slots=True)
 class NakEvent(ProcessorEvent):
-    error_code: int
-
-    event_type: ClassVar[str] = "nak"
+    event_type = "nak"
 
 
-@dataclass(slots=True)
 class CoordinatorStatusEvent(ProcessorEvent):
-    unacknowledged_count: int
-    stat1_byte: int
-    stat0_byte: int
-    jammed: bool
-    case_tamper: bool
-    idle: bool
-    reset: bool
-    link_failure: bool
-
-    event_type: ClassVar[str] = "coordinator_status"
+    event_type = "coordinator_status"
 
 
-@dataclass(slots=True)
 class CoordinatorSerialNumberEvent(ProcessorEvent):
-    serial_number: int
-
-    event_type: ClassVar[str] = "coordinator_serial_number"
+    event_type = "coordinator_serial_number"
 
 
-@dataclass(slots=True)
 class CoordinatorNetworkIdEvent(ProcessorEvent):
-    network_id: int
-
-    event_type: ClassVar[str] = "coordinator_network_id"
+    event_type = "coordinator_network_id"
 
 
-@dataclass(slots=True)
 class RepeaterResetEvent(ProcessorEvent):
-    device_uid_hex: str
-    first_hop_hex: str
-    trace_count: int
-    hop_count: int
-
-    event_type: ClassVar[str] = "repeater_reset"
+    event_type = "repeater_reset"
 
 
-@dataclass(slots=True)
 class SecurityMessageEvent(ProcessorEvent):
-    device_uid_hex: str
-    device_serial_number: int
-    first_hop_hex: str
-    trace_count: int
-    hop_count: int
-    mid: int
-    pti: int
-    device_category: str
-    device_model: str
-    signal_level: int
-    signal_margin: int
-    stat1_flags: tuple[bool, ...]
-    stat0_flags: tuple[bool, ...]
-
-    event_type: ClassVar[str] = "security_message"
+    event_type = "security_message"
 
 
-@dataclass(slots=True)
 class NetworkStatusEvent(ProcessorEvent):
-    device_uid_hex: str
-    device_serial_number: int
-    mode: int
-    signal_level: int
-    signal_margin: int
-
-    event_type: ClassVar[str] = "network_status"
+    event_type = "network_status"
 
 
-@dataclass(slots=True)
 class UnknownMessageEvent(ProcessorEvent):
-    header: int
-    reason: str
-
-    event_type: ClassVar[str] = "unknown_message"
-
-
-EventHandler = Callable[[ProcessorEvent], None]
+    event_type = "unknown_message"

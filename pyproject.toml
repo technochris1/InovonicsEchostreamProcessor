@@ -4,22 +4,23 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "inovonics-echostream-processor"
-version = "1.0.0"
-description = "Reusable Inovonics EchoStream transport and protocol processor."
+version = "1.2.0"
+description = "Reusable transport-free Inovonics EchoStream protocol core with runtime-specific adapters."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.8"
 license = { text = "Proprietary" }
 authors = [{ name = "technochris1" }]
-keywords = ["inovonics", "echostream", "serial", "socket", "processor"]
+keywords = ["inovonics", "echostream", "protocol", "socket", "uart", "micropython"]
 classifiers = [
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.11",
-  "Programming Language :: Python :: 3.12",
   "Intended Audience :: Developers",
   "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = []
+
+[project.optional-dependencies]
+cpython_uart = ["pyserial>=3.5"]
 
 [project.scripts]
 inovonics-echostream-processor = "inovonics_echostream_processor.__main__:main"

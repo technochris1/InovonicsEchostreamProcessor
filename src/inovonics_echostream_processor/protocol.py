@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from inovonics_echostream_processor.device_types import (
     device_category_label,
     device_model_label,
@@ -27,12 +25,12 @@ class EchoStreamProtocol:
         return sum(data) & 0xFF
 
     @staticmethod
-    def flags_lsb_first(byte_value: int) -> tuple[bool, ...]:
+    def flags_lsb_first(byte_value):
         return tuple(bool(byte_value & (1 << bit)) for bit in range(8))
 
     @classmethod
-    def extract_frames(cls, buffer: bytes) -> tuple[list[bytes], bytes]:
-        frames: list[bytes] = []
+    def extract_frames(cls, buffer):
+        frames = []
 
         while buffer:
             if buffer[0] not in cls.START_BYTES:
@@ -61,7 +59,7 @@ class EchoStreamProtocol:
         return frames, buffer
 
     @classmethod
-    def parse_message(cls, message: bytes):
+    def parse_message(cls, message):
         header = message[0]
 
         try:

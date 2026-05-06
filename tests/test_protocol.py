@@ -2,6 +2,7 @@ from inovonics_echostream_processor.events import (
     CoordinatorStatusEvent,
     SecurityMessageEvent,
 )
+from inovonics_echostream_processor.core import EchoStreamProcessorCore
 from inovonics_echostream_processor.protocol import EchoStreamProtocol
 
 
@@ -69,3 +70,13 @@ def test_parse_security_message_event() -> None:
     assert event.signal_margin == 50
     assert event.stat1_flags[0] is True
     assert event.stat0_flags[6] is True
+
+
+def test_core_requests_coordinator_metadata() -> None:
+    core = EchoStreamProcessorCore(auto_request_coordinator_metadata=True)
+    frame = _with_checksum(bytes([0x1C, 0x05, 0x02, 0x00, 0xB9]))
+
+    batch = core.feed(frame)
+
+    assert len(batch.events) == 1
+    assert batch.outbound_commands == [EchoStreamProtocol.REQUEST_COORDINATOR_SERIAL_NUMBER]
