@@ -13,6 +13,7 @@ and MicroPython, while runtime-specific adapters live in separate modules.
   - device type mapping
   - normalized event emission
   - coordinator metadata state and suggested outbound commands
+  - optional per-device, per-bit state coalescing for downstream apps
 - Flat transport adapters in `transports/`:
   - `cpython_socket.py`
   - `cpython_uart.py`
@@ -20,6 +21,10 @@ and MicroPython, while runtime-specific adapters live in separate modules.
   - `micropython_socket.py`
 
 The core never imports `socket`, `threading`, `queue`, `serial`, or `machine`.
+
+The optional bit coalescer keeps only one pending record per
+`(device_uid_hex, stat_group, bit)` and automatically evicts idle entries, so
+apps can buffer chatty state transitions without unbounded memory growth.
 
 For the CPython UART adapter, install the optional dependency set:
 

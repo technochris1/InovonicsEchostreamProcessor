@@ -3,6 +3,12 @@ from inovonics_echostream_processor.compat import (
     is_cpython,
     is_micropython,
 )
+from inovonics_echostream_processor.bit_coalescer import (
+    BitStateCoalescer,
+    BitStateCoalescerConfig,
+    BitStateUpdate,
+    security_event_to_bit_state_updates,
+)
 from inovonics_echostream_processor.core import (
     EchoStreamProcessorCore,
     ProcessBatch,
@@ -29,6 +35,9 @@ from inovonics_echostream_processor.version import __version__
 __all__ = [
     "__version__",
     "AckEvent",
+    "BitStateCoalescer",
+    "BitStateCoalescerConfig",
+    "BitStateUpdate",
     "CoordinatorNetworkIdEvent",
     "CoordinatorSerialNumberEvent",
     "CoordinatorStatusEvent",
@@ -46,6 +55,7 @@ __all__ = [
     "device_model_label",
     "is_cpython",
     "is_micropython",
+    "security_event_to_bit_state_updates",
 ]
 
 if is_cpython():
