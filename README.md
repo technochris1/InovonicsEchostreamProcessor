@@ -21,6 +21,12 @@ and MicroPython, while runtime-specific adapters live in separate modules.
 
 The core never imports `socket`, `threading`, `queue`, `serial`, or `machine`.
 
+For the CPython UART adapter, install the optional dependency set:
+
+```bash
+pip install .[cpython_uart]
+```
+
 ## Runtime Detection
 
 The package exposes small runtime helpers:
