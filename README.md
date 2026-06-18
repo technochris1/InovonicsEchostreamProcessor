@@ -121,3 +121,35 @@ processor = MicroPythonSocketProcessor(
 while True:
     processor.poll_once()
 ```
+
+<!-- CODEX-REPO-MAP START -->
+# InovonicsEchostreamProcessor
+
+This repository contains the `InovonicsEchostreamProcessor` project.
+
+Primary languages and file types: Python.
+
+## Root files
+
+| Item | Role |
+| --- | --- |
+| `.gitignore` | Supporting file. |
+| `pyproject.toml` | Python project metadata. |
+
+## App folders
+
+| Folder | Summary |
+| --- | --- |
+| `src/inovonics_echostream_processor` | Code folder for `inovonics_echostream_processor`; contains `bit_coalescer.py`, `client.py`, `compat.py`, `core.py`, `device_types.py`. |
+| `src/inovonics_echostream_processor/transports` | Code folder for `transports`; contains `cpython_socket.py`, `cpython_uart.py`, `micropython_socket.py`, `micropython_uart.py`, `__init__.py`. |
+| `tests` | Code folder for `tests`; contains `test_bit_coalescer.py`, `test_protocol.py`, `test_runtime.py`. |
+
+## Folder docs
+
+| Path | Role |
+| --- | --- |
+| `src/inovonics_echostream_processor/README.md` | Folder-level summary for the code in that directory. |
+| `src/inovonics_echostream_processor/transports/README.md` | Folder-level summary for the code in that directory. |
+| `tests/README.md` | Folder-level summary for the code in that directory. |
+
+<!-- CODEX-REPO-MAP END -->
