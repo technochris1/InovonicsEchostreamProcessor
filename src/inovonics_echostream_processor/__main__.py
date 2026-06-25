@@ -23,10 +23,16 @@ def main():
         default="INFO",
         help="Python logging level",
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Shortcut for --log-level DEBUG",
+    )
     args = parser.parse_args()
 
+    log_level_name = "DEBUG" if args.debug else args.log_level
     logging.basicConfig(
-        level=getattr(logging, args.log_level.upper(), logging.INFO),
+        level=getattr(logging, log_level_name.upper(), logging.INFO),
         format="%(asctime)s [%(levelname)s] %(message)s",
     )
 

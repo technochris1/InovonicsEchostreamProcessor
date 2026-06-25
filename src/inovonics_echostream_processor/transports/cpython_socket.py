@@ -39,8 +39,8 @@ class ProcessorMetrics(object):
 class SocketProcessorService(object):
     def __init__(self, config, core=None, logger=None):
         self.config = config
-        self.core = core or EchoStreamProcessorCore()
         self._logger = logger or logging.getLogger(self.__class__.__name__)
+        self.core = core or EchoStreamProcessorCore(logger=self._logger.getChild("core"))
 
         self._socket = None
         self._socket_connected = False
@@ -98,6 +98,7 @@ class SocketProcessorService(object):
         with self._send_lock:
             if not self._socket_connected or self._socket is None:
                 raise RuntimeError("EchoStream socket is not connected")
+            self._logger.debug("Sending outbound command: %s", command.hex().upper())
             self._socket.sendall(command)
 
     def _schedule_connect(self):
@@ -162,6 +163,7 @@ class SocketProcessorService(object):
                     self._logger.warning("EchoStream socket closed by peer.")
                     break
 
+                self._logger.debug("Received %d byte(s) from EchoStream socket.", len(data))
                 self._data_queue.put(data)
         except OSError as exc:
             if self._running:
@@ -182,6 +184,12 @@ class SocketProcessorService(object):
                 batch = self.core.feed(data)
                 self.metrics.total_frames += len(batch.frames)
                 self.metrics.processed_events += len(batch.events)
+                self._logger.debug(
+                    "Processed chunk into %d frame(s), %d event(s), %d command(s).",
+                    len(batch.frames),
+                    len(batch.events),
+                    len(batch.outbound_commands),
+                )
                 for command in batch.outbound_commands:
                     self.send_command(command)
             except Exception:

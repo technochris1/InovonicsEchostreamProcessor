@@ -36,8 +36,8 @@ class CpythonUartProcessorConfig(object):
 class CpythonUartProcessorService(object):
     def __init__(self, config, core=None, logger=None, serial_port=None):
         self.config = config
-        self.core = core or EchoStreamProcessorCore()
         self._logger = logger or logging.getLogger(self.__class__.__name__)
+        self.core = core or EchoStreamProcessorCore(logger=self._logger.getChild("core"))
 
         self._serial = serial_port
         self._serial_connected = serial_port is not None
@@ -94,6 +94,7 @@ class CpythonUartProcessorService(object):
         with self._send_lock:
             if not self._serial_connected or self._serial is None:
                 raise RuntimeError("EchoStream UART is not connected")
+            self._logger.debug("Sending outbound UART command: %s", command.hex().upper())
             self._serial.write(command)
 
     def _schedule_connect(self):
@@ -163,6 +164,10 @@ class CpythonUartProcessorService(object):
                 data = self._serial.read(self.config.read_size)
                 if not data:
                     continue
+                self._logger.debug(
+                    "Received %d byte(s) from EchoStream UART.",
+                    len(data),
+                )
                 self._data_queue.put(data)
         except Exception as exc:
             if self._running:
@@ -181,6 +186,12 @@ class CpythonUartProcessorService(object):
 
             try:
                 batch = self.core.feed(data)
+                self._logger.debug(
+                    "Processed UART chunk into %d frame(s), %d event(s), %d command(s).",
+                    len(batch.frames),
+                    len(batch.events),
+                    len(batch.outbound_commands),
+                )
                 for command in batch.outbound_commands:
                     self.send_command(command)
             except Exception:

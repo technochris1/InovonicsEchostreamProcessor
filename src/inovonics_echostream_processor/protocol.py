@@ -1,3 +1,5 @@
+import logging
+
 from inovonics_echostream_processor.device_types import (
     device_category_label,
     device_model_label,
@@ -19,6 +21,7 @@ class EchoStreamProtocol:
     START_BYTES = {0x06, 0x15, 0x1C, 0x35, 0x72}
     REQUEST_COORDINATOR_SERIAL_NUMBER = b"\x34\x03\x90\xC7"
     REQUEST_COORDINATOR_NETWORK_ID = b"\x34\x03\x82\xB9"
+    _logger = logging.getLogger(__name__)
 
     @staticmethod
     def checksum(data: bytes) -> int:
@@ -34,26 +37,45 @@ class EchoStreamProtocol:
 
         while buffer:
             if buffer[0] not in cls.START_BYTES:
+                cls._logger.debug(
+                    "Discarding %d byte(s) before start byte 0x%02X.",
+                    1,
+                    buffer[0],
+                )
                 buffer = buffer[1:]
                 continue
 
             if len(buffer) < 2:
+                cls._logger.debug("Waiting for more data to read frame length.")
                 break
 
             total_length = buffer[1] + 1
             if total_length < 3:
+                cls._logger.debug(
+                    "Discarding short candidate frame with declared length %d.",
+                    total_length,
+                )
                 buffer = buffer[1:]
                 continue
 
             if len(buffer) < total_length:
+                cls._logger.debug(
+                    "Waiting for %d more byte(s) to complete frame.",
+                    total_length - len(buffer),
+                )
                 break
 
             candidate = buffer[:total_length]
             buffer = buffer[total_length:]
 
             if cls.checksum(candidate[:-1]) != candidate[-1]:
+                cls._logger.debug(
+                    "Dropping frame with invalid checksum: %s",
+                    candidate.hex().upper(),
+                )
                 continue
 
+            cls._logger.debug("Accepted frame: %s", candidate.hex().upper())
             frames.append(candidate)
 
         return frames, buffer
@@ -61,6 +83,7 @@ class EchoStreamProtocol:
     @classmethod
     def parse_message(cls, message):
         header = message[0]
+        cls._logger.debug("Parsing message: %s", message.hex().upper())
 
         try:
             if header == 0x06:
@@ -95,6 +118,11 @@ class EchoStreamProtocol:
                         raw_message=message,
                         serial_number=int.from_bytes(message[3:6], byteorder="big"),
                     )
+                cls._logger.debug(
+                    "Unsupported coordinator report code 0x%02X in message %s",
+                    report_code,
+                    message.hex().upper(),
+                )
                 return UnknownMessageEvent(
                     raw_message=message,
                     header=header,
@@ -151,18 +179,32 @@ class EchoStreamProtocol:
                         signal_margin=message[message_class_index + 5],
                     )
 
+                cls._logger.debug(
+                    "Unsupported repeater message class 0x%02X in message %s",
+                    message_class,
+                    message.hex().upper(),
+                )
                 return UnknownMessageEvent(
                     raw_message=message,
                     header=header,
                     reason=f"Unsupported message class 0x{message_class:02X}",
                 )
 
+            cls._logger.debug(
+                "Unsupported message header 0x%02X in message %s",
+                header,
+                message.hex().upper(),
+            )
             return UnknownMessageEvent(
                 raw_message=message,
                 header=header,
                 reason="Unsupported header",
             )
         except IndexError:
+            cls._logger.debug(
+                "Message parsing failed due to truncated payload: %s",
+                message.hex().upper(),
+            )
             return UnknownMessageEvent(
                 raw_message=message,
                 header=header,
