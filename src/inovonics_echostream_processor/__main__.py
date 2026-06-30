@@ -4,6 +4,7 @@ import logging
 import time
 
 from inovonics_echostream_processor.compat import is_cpython
+from inovonics_echostream_processor.version import __version__
 
 
 def main():
@@ -35,6 +36,7 @@ def main():
         level=getattr(logging, log_level_name.upper(), logging.INFO),
         format="%(asctime)s [%(levelname)s] %(message)s",
     )
+    print(f"Inovonics EchoStream Processor {__version__}", flush=True)
 
     service = SocketProcessorService(
         SocketProcessorConfig(host=args.host, port=args.port),
