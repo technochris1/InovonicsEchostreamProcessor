@@ -26,6 +26,20 @@ The optional bit coalescer keeps only one pending record per
 `(device_uid_hex, stat_group, bit)` and automatically evicts idle entries, so
 apps can buffer chatty state transitions without unbounded memory growth.
 
+### Security status capabilities
+
+The processor includes the security end-device capability matrix from the
+Inovonics Security End Device Developer Guide, Revision I, pages 24-26. Use
+`security_event_to_supported_bit_state_updates(event)` when a downstream app
+should receive only the status bits documented for that product model. Use
+`security_event_to_bit_state_updates(event)` when a diagnostic view needs all
+raw status bits, including reserved positions.
+
+The filtered helper is conservative: a product model not present in the guide
+is treated as unknown and all raw bits are retained. Existing consumers keep
+the historical one-based `BitStateUpdate.bit` field; `protocol_bit` exposes the
+actual zero-based wire bit from the EchoStream message.
+
 For the CPython UART adapter, install the optional dependency set:
 
 ```bash
@@ -57,6 +71,26 @@ for event in batch.events:
 for command in batch.outbound_commands:
     print("send command", command.hex())
 ```
+
+## Aggregate, repeater, and control frames
+
+The processor validates both observed aggregate entry-length conventions and
+emits an AggregateMessageEvent followed by its children in wire order.
+ProcessBatch.frames contains the original wire frames. ProcessBatch.events
+and event handlers receive both the envelope and the children. When calling
+EchoStreamProtocol.parse_message directly, read children from the envelope.
+The envelope's signal and margin belong to the upstream link. Each child
+keeps its own readings and lists the aggregator as its first hop.
+
+Repeater status supports broadcast and directed layouts. Repeater reset
+reports include the repeater's NID and RF readings. Existing raw signal values
+are preserved and signal_valid indicates whether both fall within 0-99.
+Malformed frames cannot supply data from the checksum byte. Receiver and
+coordinator configuration reports and inbound serial data are typed events.
+
+Use decode_icn3000_7 with a transmitter explicitly configured for seven-code
+ICN 3000 mode. It returns an alarm number, 0 for RESET, or None for a
+zero-input report. Consumers own call state and should clear it on RESET.
 
 ## CPython Socket Example
 

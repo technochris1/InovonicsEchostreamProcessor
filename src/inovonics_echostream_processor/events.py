@@ -48,5 +48,17 @@ class NetworkStatusEvent(ProcessorEvent):
     event_type = "network_status"
 
 
+class AggregateMessageEvent(ProcessorEvent):
+    event_type = "aggregate_message"
+
+
+class SerialDataEvent(ProcessorEvent):
+    event_type = "serial_data_inbound"
+
+
+class ConfigurationReportEvent(ProcessorEvent):
+    event_type = "configuration_report"
+
+
 class UnknownMessageEvent(ProcessorEvent):
     event_type = "unknown_message"

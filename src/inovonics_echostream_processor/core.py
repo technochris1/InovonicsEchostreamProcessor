@@ -1,6 +1,7 @@
 import logging
 
 from inovonics_echostream_processor.events import (
+    AggregateMessageEvent,
     CoordinatorNetworkIdEvent,
     CoordinatorSerialNumberEvent,
     CoordinatorStatusEvent,
@@ -51,6 +52,8 @@ class EchoStreamProcessorCore(object):
             self._logger.debug("Processing frame: %s", frame.hex().upper())
             event, commands = self.process_frame(frame)
             events.append(event)
+            if isinstance(event, AggregateMessageEvent):
+                events.extend(event.children)
             outbound_commands.extend(commands)
 
         self._logger.debug(
@@ -68,6 +71,9 @@ class EchoStreamProcessorCore(object):
         event = EchoStreamProtocol.parse_message(frame)
         commands = self._update_state(event)
         self._emit(event)
+        if isinstance(event, AggregateMessageEvent):
+            for child in event.children:
+                self._emit(child)
         self._logger.debug(
             "Parsed frame into %s; queued %d outbound command(s).",
             event.event_type,

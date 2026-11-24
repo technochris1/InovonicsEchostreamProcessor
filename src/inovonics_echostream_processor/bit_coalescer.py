@@ -1,5 +1,7 @@
 import time
 
+from inovonics_echostream_processor.device_types import security_status_bit_definition, security_status_capabilities
+
 
 DEFAULT_QUIET_PERIOD_MS = 500
 DEFAULT_MAX_HOLD_MS = 2000
@@ -15,6 +17,11 @@ class BitStateUpdate(object):
         value,
         source_event_type=None,
         toggles_suppressed=0,
+        protocol_bit=None,
+        status_name=None,
+        status_label=None,
+        supported=None,
+        reserved=False,
     ):
         self.device_uid_hex = device_uid_hex
         self.stat_group = stat_group
@@ -22,6 +29,13 @@ class BitStateUpdate(object):
         self.value = bool(value)
         self.source_event_type = source_event_type
         self.toggles_suppressed = toggles_suppressed
+        # Keep the historical one-based ``bit`` field while exposing the actual
+        # zero-based wire bit used by the EchoStream specification.
+        self.protocol_bit = int(protocol_bit) if protocol_bit is not None else max(int(bit) - 1, 0)
+        self.status_name = status_name
+        self.status_label = status_label
+        self.supported = supported
+        self.reserved = bool(reserved)
 
     @property
     def key(self):
@@ -54,6 +68,7 @@ class _BitStateEntry(object):
         self.device_uid_hex = update.device_uid_hex
         self.stat_group = update.stat_group
         self.bit = update.bit
+        self.update = update
         self.last_emitted_value = None
         self.has_emitted_value = False
         self.pending_value = update.value
@@ -150,6 +165,7 @@ class BitStateCoalescer(object):
             return
 
         entry.last_activity_ms = now_ms
+        entry.update = update
         entry.source_event_type = update.source_event_type or entry.source_event_type
 
         if entry.pending_value is None:
@@ -206,6 +222,11 @@ class BitStateCoalescer(object):
             value=entry.pending_value,
             source_event_type=entry.source_event_type,
             toggles_suppressed=entry.toggles_suppressed,
+            protocol_bit=entry.update.protocol_bit,
+            status_name=entry.update.status_name,
+            status_label=entry.update.status_label,
+            supported=entry.update.supported,
+            reserved=entry.update.reserved,
         )
         entry.last_emitted_value = entry.pending_value
         entry.has_emitted_value = True
@@ -239,33 +260,44 @@ class BitStateCoalescer(object):
         return int(self._now_ms())
 
 
-def security_event_to_bit_state_updates(event):
+def security_event_to_bit_state_updates(event, supported_only=False):
+    """Convert both status bytes, optionally excluding documented reserved bits.
+
+    Unknown product models intentionally keep all raw bits. Dropping data for a
+    model that is missing from the capability table would hide useful evidence.
+    """
     updates = []
     source_event_type = getattr(event, "event_type", None)
+    device_model = getattr(event, "device_model", None)
+    supported_bits = security_status_capabilities(device_model)
 
-    for bit, value in enumerate(getattr(event, "stat1_flags", ()), start=1):
-        updates.append(
-            BitStateUpdate(
-                device_uid_hex=event.device_uid_hex,
-                stat_group=1,
-                bit=bit,
-                value=value,
-                source_event_type=source_event_type,
+    for stat_group, flags in ((1, getattr(event, "stat1_flags", ())), (0, getattr(event, "stat0_flags", ()))):
+        for protocol_bit, value in enumerate(flags):
+            supported = None if supported_bits is None else (stat_group, protocol_bit) in supported_bits
+            if supported_only and supported is False:
+                continue
+            definition = security_status_bit_definition(stat_group, protocol_bit, device_model)
+            updates.append(
+                BitStateUpdate(
+                    device_uid_hex=event.device_uid_hex,
+                    stat_group=stat_group,
+                    bit=protocol_bit + 1,
+                    value=value,
+                    source_event_type=source_event_type,
+                    protocol_bit=protocol_bit,
+                    status_name=definition["name"] if definition else None,
+                    status_label=definition["label"] if definition else None,
+                    supported=supported,
+                    reserved=definition is None,
+                )
             )
-        )
-
-    for bit, value in enumerate(getattr(event, "stat0_flags", ()), start=1):
-        updates.append(
-            BitStateUpdate(
-                device_uid_hex=event.device_uid_hex,
-                stat_group=0,
-                bit=bit,
-                value=value,
-                source_event_type=source_event_type,
-            )
-        )
 
     return updates
+
+
+def security_event_to_supported_bit_state_updates(event):
+    """Return only supported status bits for a known product model."""
+    return security_event_to_bit_state_updates(event, supported_only=True)
 
 
 def _normalize_updates(updates):
