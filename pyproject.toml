@@ -4,11 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "inovonics-echostream-processor"
-version = "1.5.0"
+version = "1.5.1"
 description = "Reusable transport-free Inovonics EchoStream protocol core with runtime-specific adapters."
 readme = "README.md"
 requires-python = ">=3.8"
-license = { text = "Proprietary" }
+license = { text = "GPL-3.0-only" }
 authors = [{ name = "technochris1" }]
 keywords = ["inovonics", "echostream", "protocol", "socket", "uart", "micropython"]
 classifiers = [

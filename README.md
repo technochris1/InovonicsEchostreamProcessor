@@ -4,6 +4,10 @@
 new applications. The core is transport-free so it can run on standard Python
 and MicroPython, while runtime-specific adapters live in separate modules.
 
+## License
+
+The EchoStream processor is licensed under [GPL-3.0-only](LICENSE).
+
 ## Architecture
 
 - Core:
